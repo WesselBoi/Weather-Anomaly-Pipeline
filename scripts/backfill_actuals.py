@@ -1,7 +1,8 @@
 import requests
 import pandas as pd
-from datetime import date
+from datetime import date, timedelta
 from db_utils import get_engine
+from sqlalchemy import text
 
 cities = [
     {"city": "Denver", "latitude": 39.7392, "longitude": -104.9903},
@@ -14,29 +15,28 @@ cities = [
 
 url = "https://api.open-meteo.com/v1/forecast"
 engine = get_engine()
-records = []
+yesterday = (date.today() - timedelta(days=1)).isoformat()
 
 for item in cities:
     params = {
         "latitude": item["latitude"],
         "longitude": item["longitude"],
-        "daily": "temperature_2m_min,temperature_2m_max,temperature_2m_mean,precipitation_sum,wind_speed_10m_max",
-        "forecast_days": 2,
+        "daily": "temperature_2m_mean",
+        "start_date": yesterday,
+        "end_date": yesterday,
         "timezone": "auto",
     }
     resp = requests.get(url, params=params, timeout=15)
     resp.raise_for_status()
     d = resp.json()["daily"]
+    actual = d["temperature_2m_mean"][0]
 
-    records.append({
-        "city": item["city"],
-        "target_date": d["time"][1],
-        "predicted_temp": d["temperature_2m_mean"][1],
-        "source": "open_meteo",
-        "actual_temp": None,
-        "created_at": pd.Timestamp.now(),
-    })
+    with engine.begin() as conn:
+        conn.execute(text("""
+            UPDATE forecast_predictions
+            SET actual_temp = :actual,
+                error = ABS(predicted_temp - :actual)
+            WHERE city = :city AND target_date = :target_date AND actual_temp IS NULL
+        """), {"actual": actual, "city": item["city"], "target_date": yesterday})
 
-forecast_df = pd.DataFrame(records)
-forecast_df.to_sql("forecast_predictions", engine, if_exists="append", index=False)
-print(f"Logged {len(forecast_df)} forecasts for {date.today()}")
+print(f"Backfilled actuals for {yesterday}")
