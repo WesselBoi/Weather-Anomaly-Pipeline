@@ -1,2 +1,4 @@
 .env
-data/raw
+venv/
+data/raw/
+__pycache__/
