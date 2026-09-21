@@ -36,6 +36,15 @@ def build_features(g):
     g["lag_1"] = g["temp_mean"].shift(1)
     g["lag_2"] = g["temp_mean"].shift(2)
     g["rolling_7"] = g["temp_mean"].shift(1).rolling(7).mean()
+
+    # New: lagged versions of the other daily variables
+    g["lag_1_temp_min"] = g["temp_min"].shift(1)
+    g["lag_1_temp_max"] = g["temp_max"].shift(1)
+    g["lag_1_range"] = g["lag_1_temp_max"] - g["lag_1_temp_min"]
+    g["lag_1_precip"] = g["precipitation_sum"].shift(1)
+    g["lag_1_wind"] = g["wind_speed"].shift(1)
+    g["lag_1_humidity"] = g["humidity"].shift(1)
+
     g["target"] = g["temp_mean"].shift(-1)
     return g
 
@@ -44,7 +53,11 @@ feat_df = feat_df.dropna(subset=["lag_1", "lag_2", "rolling_7", "target"])
 feat_df = pd.get_dummies(feat_df, columns=["city"], prefix="city")
 
 city_cols = [c for c in feat_df.columns if c.startswith("city_")]
-feature_cols = ["lag_1", "lag_2", "rolling_7", "day_of_year"] + city_cols
+feature_cols = [
+    "lag_1", "lag_2", "rolling_7", "day_of_year",
+    "lag_1_temp_min", "lag_1_temp_max", "lag_1_range",
+    "lag_1_precip", "lag_1_wind", "lag_1_humidity",
+] + city_cols
 X, y = feat_df[feature_cols], feat_df["target"]
 
 lin_model = LinearRegression().fit(X, y)
@@ -63,6 +76,14 @@ for city, g in df.groupby("city"):
     rolling_7 = g["temp_mean"].tail(7).mean()
     doy = (int(g.iloc[-1]["day_of_year"]) % 366) + 1
 
+    # New: pull the other lagged features from the most recent row
+    lag_1_temp_min = g.iloc[-1]["temp_min"]
+    lag_1_temp_max = g.iloc[-1]["temp_max"]
+    lag_1_range = lag_1_temp_max - lag_1_temp_min
+    lag_1_precip = g.iloc[-1]["precipitation_sum"]
+    lag_1_wind = g.iloc[-1]["wind_speed"]
+    lag_1_humidity = g.iloc[-1]["humidity"]
+
     records.append(dict(city=city, target_date=target_date, predicted_temp=lag_1,
                          source="persistence", actual_temp=None, created_at=pd.Timestamp.now()))
 
@@ -73,7 +94,12 @@ for city, g in df.groupby("city"):
     records.append(dict(city=city, target_date=target_date, predicted_temp=seasonal_pred,
                          source="seasonal_naive", actual_temp=None, created_at=pd.Timestamp.now()))
 
-    row = {"lag_1": lag_1, "lag_2": lag_2, "rolling_7": rolling_7, "day_of_year": doy}
+    row = {
+        "lag_1": lag_1, "lag_2": lag_2, "rolling_7": rolling_7, "day_of_year": doy,
+        "lag_1_temp_min": lag_1_temp_min, "lag_1_temp_max": lag_1_temp_max,
+        "lag_1_range": lag_1_range, "lag_1_precip": lag_1_precip,
+        "lag_1_wind": lag_1_wind, "lag_1_humidity": lag_1_humidity,
+    }
     for c in city_cols:
         row[c] = 1 if c == f"city_{city}" else 0
     X_pred = pd.DataFrame([row])[feature_cols]
@@ -85,3 +111,11 @@ for city, g in df.groupby("city"):
 
 upsert_forecast(engine, records)
 print(f"Logged {len(records)} ML predictions for {target_date}")
+
+
+importances = pd.Series(xgb_model.feature_importances_, index=feature_cols).sort_values(ascending=False)
+print(importances)
+print(feature_cols)
+# should show all 16 names, not the original 10
+print(X.shape)
+# should show 16 columns, not 10
