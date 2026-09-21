@@ -1,0 +1,36 @@
+name: Daily Weather Pipeline
+
+on:
+  schedule:
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Backfill yesterday's actuals
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python backfill_actuals.py
+
+      - name: Log Open-Meteo forecast
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python ingest_forecast.py
+
+      - name: Generate ML predictions
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python predict_ml.py
