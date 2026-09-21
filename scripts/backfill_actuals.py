@@ -6,8 +6,8 @@ import pandas as pd
 import requests
 from sqlalchemy import text
 
-from scripts.cities import CITIES
-from scripts.db_utils import get_engine
+from cities import CITIES
+from db_utils import get_engine
 
 url = "https://api.open-meteo.com/v1/forecast"
 engine = get_engine()
