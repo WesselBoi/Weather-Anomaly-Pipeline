@@ -23,7 +23,7 @@ jobs:
       - name: Backfill yesterday's actuals
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python backfill_actuals.py
+        run: python scripts/backfill_actuals.py
 
       - name: Log Open-Meteo forecast
         env:
@@ -33,4 +33,4 @@ jobs:
       - name: Generate ML predictions
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python predict_ml.py
+        run: python scripts/predict_ml.py
