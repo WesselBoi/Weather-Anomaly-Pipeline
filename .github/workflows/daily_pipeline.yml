@@ -28,7 +28,7 @@ jobs:
       - name: Log Open-Meteo forecast
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python ingest_forecast.py
+        run: python scripts/ingest_forecast.py
 
       - name: Generate ML predictions
         env:
