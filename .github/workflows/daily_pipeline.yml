@@ -2,7 +2,7 @@ name: Daily Weather Pipeline
 
 on:
   schedule:
-    - cron: '37 12 * * *'
+    - cron: '37 12 * * *' #R
   workflow_dispatch:
 
 jobs:
