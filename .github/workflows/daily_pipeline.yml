@@ -25,6 +25,11 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/backfill_actuals.py
 
+      - name: Detect anomalies
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/detect_anomalies.py
+
       - name: Log Open-Meteo forecast
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
