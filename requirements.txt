@@ -1,8 +1,8 @@
-pandas
-numpy
-requests
-sqlalchemy
-psycopg2-binary
-python-dotenv
-xgboost
-scikit-learn
+numpy==2.5.3
+pandas==3.0.6
+psycopg2-binary==2.9.13
+python-dotenv==1.2.3
+requests==2.34.2
+scikit-learn==1.9.1
+xgboost==3.4.1
+SQLAlchemy==2.0.54
